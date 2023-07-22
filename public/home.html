@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="/styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Favolist</title>
+</head>
+<body>
+    <header>
+        <h1>Favolist</h1>
+    </header>
+
+    <div id="favoritesContainer"></div>
+
+    <script src="main.js"></script>
+    <script src="menu.js"></script>
+    <script>
+    window.onload = function () {
+        createHamburgerMenu();
+        fetchFavorites();
+    }
+    </script>
+</body>
+</html>

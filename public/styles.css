@@ -1,0 +1,123 @@
+body {
+    background: white;
+    font-family: Arial, sans-serif;
+}
+
+header {
+    background-color: darkgrey;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 15px;
+    position: relative;
+}
+
+header h1 {
+    color: white;
+    margin: 0;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+form {
+    width: 60%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 5% auto;
+}
+
+form input {
+    width: 100%;
+    padding: 10px;
+    font-size: 1em;
+    margin-bottom: 1em;
+}
+
+form button {
+    display: block; 
+    width: 30%; 
+    padding: 10px 0; 
+    background-color: grey; 
+    color: white; 
+    border: none; 
+    border-radius: 5px; 
+    cursor: pointer;
+}
+
+form button:hover {
+    background-color: darkgrey;
+}
+
+#favoritesContainer div {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.thumbnail {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+}
+
+#menuToggle {
+    display: block;
+    position: absolute;
+    left: 15px;
+    z-index: 2;
+    width: 40px;
+    height: 45px;
+}
+
+#menuToggle input {
+    display: block;
+    width: 40px;
+    height: 100%;
+    position: absolute;
+    cursor: pointer;
+    opacity: 0;
+    z-index: 1;
+}
+
+#menuToggle span {
+    display: block;
+    width: 33px;
+    height: 4px;
+    margin-bottom: 5px;
+    position: relative;
+    background: #cdcdcd;
+    border-radius: 3px;
+    z-index: 1;
+    transform-origin: 4px 0px;
+    transition: transform 0.5s cubic-bezier(0.77,0.2,0.05,1.0),
+    background 0.5s cubic-bezier(0.77,0.2,0.05,1.0),
+    opacity 0.55s ease;
+}
+
+nav#menu {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    background: white;
+    padding: 15px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+}
+
+nav#menu a {
+    display: block;
+    margin-bottom: 15px;
+    text-decoration: none;
+    color: black;
+}
+
+nav#menu a:last-child {
+    margin-bottom: 0;
+}
+
+#menuToggle input:checked ~ nav#menu {
+    display: block;
+}
