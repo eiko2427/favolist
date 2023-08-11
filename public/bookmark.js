@@ -12,24 +12,42 @@ document.getElementById('save-button').addEventListener('click', function() {
         url: url,
         time: time,
         memo: memo,
-        userId: localStorage.getItem('userId'), // ユーザーIDを追加
+        userId: localStorage.getItem('user_id'), // ユーザーIDを追加
     };
 
-    const token = localStorage.getItem('token');
+    const tokenData = JSON.parse(localStorage.getItem('token'));
+    const token = tokenData.token;
+     // お気に入り情報をDBに保存する処理を書く
+    const userId = localStorage.getItem('user_id'); 
+    const favData = {
+        user_id: userId, // ここにユーザーIDを設定
+        url: favorite.url,
+        time: favorite.time,
+        memo: favorite.memo 
+    };
+
+    console.log('About to fetch...'); // 追加
+    console.log('favData:', favData); // 追加
+    console.log('Token:', token); // 追加
 
     // Send a POST request to the server
     fetch('/favorites', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'x-auth-token': token
+            'Authorization': `Bearer ${token}`  // "Bearer "プレフィクスを追加してヘッダーに認証トークンを設定
         },
-        body: JSON.stringify(favorite),
+        body: JSON.stringify(favData),
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Fetch response:', response); // 追加
+        return response.json();
+    })
     .then(data => {
+        console.log('Fetch data:', data); // 追加
         if (data.success) {
             alert("お気に入りに追加しました。");
+            window.location.href = 'home.html'; 
         } else {
             alert("エラーが発生しました。");
         }

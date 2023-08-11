@@ -1,16 +1,24 @@
 // ユーザーのお気に入りだけを取得する関数
 async function fetchUserFavorites(userId) {
-    const token = localStorage.getItem('token'); 
-    const response = await fetch(`/favorites?userId=${userId}`, { // ユーザーIDをURLパラメータとして送信
+    let storedItem = localStorage.getItem('token');
+    let parsedItem = JSON.parse(storedItem);  // ローカルストレージから取得したアイテムをJSONとしてパース
+    let token = parsedItem.token;  // JSONからトークンを取得
+    console.log('Retrieved token:', token);  // トークンが正しく取得できていることを確認
+
+    const response = await fetch(`/favorites?userId=${userId}`, { 
         headers: {
-            'Authorization': `Bearer ${token}`  // ヘッダーに認証トークンを設定
+            'Authorization': `Bearer ${token}`  // "Bearer "プレフィクスを追加してヘッダーに認証トークンを設定
         }
-    })
+    });
+
+    console.log('Response:', response);  // レスポンスをログ出力
+
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const message = await response.text();  // レスポンス本文を取得
+        throw new Error(`HTTP error! status: ${response.status}, message: ${message}`);
     }
     const data = await response.json();
-
+    console.log(data);
     if (data.success) {
         const container = document.getElementById('favoritesContainer');
 
@@ -36,55 +44,31 @@ async function fetchUserFavorites(userId) {
                     const time = document.createElement('p');
                     time.innerText = favorite.time;
                     div.appendChild(time);
-
-                     // お気に入りボタンを表示
-                     const favButton = document.createElement('button');
-                     favButton.classList.add('favorite-button');
-                     favButton.innerHTML = '⭐'; 
-                     favButton.dataset.active = 'false'; 
-                     div.appendChild(favButton);
- 
-
                     container.appendChild(div);
 
-                    // ボタンのクリックイベントリスナーを追加
-                    favButton.addEventListener('click', function() {
-                        // ボタンのアクティブ状態を取得
-                        const isActive = favButton.dataset.active === 'true';
+                    // 削除ボタンを追加
+                    const deleteButton = document.createElement('button');
+                    deleteButton.innerHTML = '削除';
+                    deleteButton.classList.add('btn', 'btn-danger');  // Bootstrapのクラスを追加
+                    deleteButton.addEventListener('click', async () => {
+                        const response = await fetch(`/favorites?userId=${userId}&url=${encodeURIComponent(favorite.url)}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${token}`  // "Bearer "プレフィクスを追加してヘッダーに認証トークンを設定
+                            },
+                        });
 
-                        if (isActive) {
-                            // ボタンが既にアクティブ（お気に入り済み）ならば、非アクティブ（未お気に入り）に変更
-                            favButton.style.color = 'gray';
-                            favButton.dataset.active = 'false';
-
-                            // お気に入り情報をDBから削除する処理を書く
-                            // ...
+                        if (!response.ok) {
+                            const message = await response.text();  // レスポンス本文を取得
+                            throw new Error(`HTTP error! status: ${response.status}, message: ${message}`);
                         } else {
-                            // ボタンが非アクティブ（未お気に入り）ならば、アクティブ（お気に入り済み）に変更
-                            favButton.style.color = 'yellow';
-                            favButton.dataset.active = 'true';
-
-                            // お気に入り情報をDBに保存する処理を書く
-                            const userId = localStorage.getItem('userId'); 
-                            const favData = {
-                                userId: userId, // ここにユーザーIDを設定
-                                postId: favorite.postid,
-                                url: favorite.url,
-                                time: favorite.time,
-                            };
-                    
-                            fetch('/favorites', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify(favData),
-                            })
-                            .then(response => response.json())
-                            .then(data => console.log(data))
-                            .catch((error) => console.error('Error:', error));
+                            div.remove();  // 成功した場合、該当のお気に入りを画面から削除
                         }
                     });
+
+                    div.appendChild(deleteButton);
+                    container.appendChild(div);
+
                 });
         }
     }
@@ -92,13 +76,21 @@ async function fetchUserFavorites(userId) {
 
 async function fetchFavorites() {
     
-    const response = await fetch('/allfavorites');
-    
-    if (!response.ok) {
-        console.error(`Failed to fetch favorites, status: ${response.status}`);
-        return;
-    }
+    let storedItem = localStorage.getItem('token');
+    let parsedItem = storedItem ? JSON.parse(storedItem) : null;  // ローカルストレージから取得したアイテムをJSONとしてパース
+    let token = parsedItem ? parsedItem.token : null;  // JSONからトークンを取得
 
+    const response = await fetch('/allfavorites', {
+        headers: token ? {
+            'Authorization': `Bearer ${token}`  // "Bearer "プレフィクスを追加してヘッダーに認証トークンを設定
+        } : {}
+    });
+    console.log('Response:', response); 
+    if (!response.ok) {
+        const message = await response.text();  // レスポンス本文を取得
+        throw new Error(`HTTP error! status: ${response.status}, message: ${message}`);
+    }
+    
     const data = await response.json();
 
     if (data.success) {
@@ -155,21 +147,27 @@ async function fetchFavorites() {
                             favButton.dataset.active = 'true';
 
                             // お気に入り情報をDBに保存する処理を書く
-                            const userId = localStorage.getItem('userId'); 
+                            const userId = localStorage.getItem('user_id'); 
                             const favData = {
-                                userId: userId, // ここにユーザーIDを設定
-                                postId: favorite.postid,
+                                user_id: userId, // ここにユーザーIDを設定
+                                post_id: favorite.postid,
                                 url: favorite.url,
                                 time: favorite.time,
                             };
                     
+                            let storedItem = localStorage.getItem('token');
+                            let parsedItem = JSON.parse(storedItem);  // ローカルストレージから取得したアイテムをJSONとしてパース
+                            let token = parsedItem.token;  // JSONからトークンを取得
+
                             fetch('/favorites', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`  // "Bearer "プレフィクスを追加してヘッダーに認証トークンを設定
                                 },
                                 body: JSON.stringify(favData),
                             })
+
                             .then(response => response.json())
                             .then(data => console.log(data))
                             .catch((error) => console.error('Error:', error));
@@ -208,7 +206,13 @@ function login(email, password) {
         localStorage.setItem('user_id', decodedToken.user_id);
         window.location.href = '/home.html';
     })
-    
+    // .then(userId => {
+    //     if (!userId) {
+    //         throw new Error('User ID is undefined or empty');
+    //     }
+    //     localStorage.setItem('user_id', userId.trim()); // Store user_id directly
+    //     window.location.href = '/home.html';
+    // })
     .catch(error => {
         console.error('エラー:', error);
     });
@@ -219,7 +223,7 @@ function login(email, password) {
 function logout() {
     // ローカルストレージからトークンとユーザーIDを削除
     localStorage.removeItem('token');
-    localStorage.removeItem('userId');
+    localStorage.removeItem('user_id');
     
     // ログインページにリダイレクト
     window.location.href = 'login.html';

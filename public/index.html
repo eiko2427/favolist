@@ -3,31 +3,32 @@
 <head>
     <title>お気に入り動画保存</title>
     <link rel="stylesheet" type="text/css" href="/styles.css">
-    <style>
-        .input-group {
-            margin-bottom: 1em;
-        }
-    </style>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
 </head>
 <body>
     <header>
         <h1>Favolist</h1>
     </header>
-
-    <div class="input-group">
-        <label for="url">動画のURL:</label><br>
-        <input type="text" id="url" name="url">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="url">動画のURL:</label>
+                    <input type="text" id="url" name="url" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="time">お気に入りの時間:</label>
+                    <input type="time" id="time" name="time" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="memo">メモ (30文字以内):</label>
+                    <textarea id="memo" name="memo" maxlength="30" class="form-control"></textarea>
+                </div>
+                <button id="save-button" class="btn btn-dark w-100">登録</button>
+            </div>
+        </div>
     </div>
-    <div class="input-group">
-        <label for="time">お気に入りの時間:</label><br>
-        <input type="time" id="time" name="time">
-    </div>
-    <div class="input-group">
-        <label for="memo">メモ (30文字以内):</label><br>
-        <textarea id="memo" name="memo" maxlength="30"></textarea>
-    </div>
-    <button id="save-button">登録</button>
-
+    <script src="main.js"></script>
     <script src="menu.js"></script>
     <script>
     window.onload = function () {

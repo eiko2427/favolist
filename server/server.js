@@ -96,7 +96,7 @@ app.get('/confirmation/:token', function (req, res) {
 });
 
 app.get('/allfavorites', function (req, res) {
-    const query = 'SELECT * FROM favorites ORDER BY post_id DESC LIMIT 50';
+    const query = 'SELECT * FROM post';
 
     connection.query(query, function (error, results, fields) {
         if (error) {
@@ -121,24 +121,37 @@ app.post('/login', (req, res) => {
         const token = jwt.sign({ user_id: results[0].user_id }, 'jwtPrivateKey');
         console.log('Generated token:', token);
         res.json({ token: token }); // Change from res.send(token) to res.json({ token: token })
-
+        // res.json({ token: token, user_id: results[0].user_id });
     });
 });
 
 app.get('/favorites', function (req, res) {
-    const token = req.header('x-auth-token');
-    if (!token) return res.status(401).send('Access denied. No token provided.');
+    const bearerHeader = req.headers['authorization'];
+    if (!bearerHeader) return res.status(401).send('Access denied. No token provided.');
+
+    const bearer = bearerHeader.split(' ');
+    const token = bearer[1];
 
     let userId;
     try {
         const decoded = jwt.verify(token, 'jwtPrivateKey');
+        console.log(decoded);
         userId = decoded.user_id;
     }
     catch (ex) {
-        return res.status(400).send('Invalid token.');
+        console.error(ex); //エラーの詳細をログに出力
+        if (ex.name === 'TokenExpiredError') {
+            return res.status(401).send('Token expired.'); // トークンが期限切れの場合
+        } else if (ex.name === 'JsonWebTokenError') {
+            return res.status(401).send('Invalid token.'); // トークンが無効の場合
+        } else if (ex.name === 'NotBeforeError') {
+            return res.status(401).send('Token not active.'); // トークンがまだ有効でない場合
+        } else {
+            return res.status(500).send('Something went wrong.'); // 予期せぬエラーの場合
+        }
     }
 
-    const query = 'SELECT * FROM favorites WHERE userId = ? ORDER BY post_id DESC LIMIT 50';
+    const query = 'SELECT * FROM favorites WHERE user_id = ? ORDER BY post_id DESC LIMIT 50';
     const values = [userId];
 
     connection.query(query, values, function (error, results, fields) {
@@ -153,10 +166,14 @@ app.get('/favorites', function (req, res) {
 
 
 
-app.post('/favorites', function (req, res) {
-    const token = req.header('x-auth-token');
-    if (!token) return res.status(401).send('Access denied. No token provided.');
 
+
+app.post('/favorites', function (req, res) {
+    const bearerHeader = req.headers['authorization'];
+    if (!bearerHeader) return res.status(401).send('Access denied. No token provided.');
+
+    const bearer = bearerHeader.split(' ');
+    const token = bearer[1];
     let userId;
     try {
         const decoded = jwt.verify(token, 'jwtPrivateKey');
@@ -168,8 +185,65 @@ app.post('/favorites', function (req, res) {
     }
 
     const favorite = req.body;
-    const query = 'INSERT INTO favorites (userId, url, time, memo) VALUES (?, ?, ?, ?)';
-    const values = [userId, favorite.url, favorite.time, favorite.memo];
+    const queryFavorite = 'INSERT INTO favorites (user_id, url, time, memo) VALUES (?, ?, ?, ?)';
+    
+    const valuesFavorite = [userId, favorite.url, favorite.time, favorite.memo];
+
+    // トランザクション開始
+    connection.beginTransaction(function(err) {
+        if (err) { 
+            res.json({ success: false, error: err });
+            return;
+        }
+        // favoritesテーブルに挿入
+        connection.query(queryFavorite, valuesFavorite, function (error, results, fields) {
+            if (error) {
+                return connection.rollback(function() {
+                    res.json({ success: false, error: error });
+                });
+            }
+
+            // postテーブルの対応するレコードのfavcountを増やす
+            connection.query('UPDATE post SET favcount = favcount + 1 WHERE url = ?', [favorite.url], function(error, results, fields) {
+                if (error) {
+                    return connection.rollback(function() {
+                        res.json({ success: false, error: error });
+                    });
+                }
+
+                // トランザクションをコミット
+                connection.commit(function(err) {
+                    if (err) {
+                        return connection.rollback(function() {
+                            res.json({ success: false, error: err });
+                        });
+                    }
+                    res.json({ success: true });
+                });
+            });
+        });
+    });
+});
+
+app.delete('/favorites', function (req, res) {
+    const bearerHeader = req.headers['authorization'];
+    if (!bearerHeader) return res.status(401).send('Access denied. No token provided.');
+
+    const bearer = bearerHeader.split(' ');
+    const token = bearer[1];
+    let userId;
+    try {
+        const decoded = jwt.verify(token, 'jwtPrivateKey');
+        userId = decoded.user_id;
+    }
+    catch (ex) {
+        console.error(ex);  // ログステートメントを追加
+        return res.status(400).send('Invalid token.');
+    }
+
+    const url = req.query.url;
+    const query = 'DELETE FROM favorites WHERE user_id = ? AND url = ?';
+    const values = [userId, url];
 
     connection.query(query, values, function (error, results, fields) {
         if (error) {
@@ -179,6 +253,9 @@ app.post('/favorites', function (req, res) {
         }
     });
 });
+
+
+
 
 
 app.listen(3000, function () {

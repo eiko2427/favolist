@@ -1,7 +1,6 @@
-// Favorites の取得リクエストを送るときには、ヘッダーにトークンを含めます。
 fetch('/favorites', {
     headers: {
-        'x-auth-token': localStorage.getItem('token')
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
     }
 })
 .then(res => res.json())

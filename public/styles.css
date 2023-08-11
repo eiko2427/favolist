@@ -121,3 +121,10 @@ nav#menu a:last-child {
 #menuToggle input:checked ~ nav#menu {
     display: block;
 }
+.form-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
