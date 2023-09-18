@@ -1,16 +1,17 @@
+const { all } = require("axios");
+
 // ユーザーのお気に入りだけを取得する関数
 async function fetchUserFavorites(userId) {
     let storedItem = localStorage.getItem('token');
     let parsedItem = JSON.parse(storedItem);  // ローカルストレージから取得したアイテムをJSONとしてパース
     let token = parsedItem.token;  // JSONからトークンを取得
     console.log('Retrieved token:', token);  // トークンが正しく取得できていることを確認
-
     const response = await fetch(`/favorites?userId=${userId}`, { 
         headers: {
             'Authorization': `Bearer ${token}`  // "Bearer "プレフィクスを追加してヘッダーに認証トークンを設定
         }
     });
-
+    
     console.log('Response:', response);  // レスポンスをログ出力
 
     if (!response.ok) {
@@ -30,7 +31,8 @@ async function fetchUserFavorites(userId) {
 
                     // サムネイルを表示
                     const thumbnail = document.createElement('img');
-                    thumbnail.src = linkPreview.image;  // リンクプレビューから取得した画像URLを設定
+                    thumbnail.src = `http://localhost:3000/favolist/saved_images/imgs/${favorite.image_url}.jpg`;
+                    console.log("サムネイル", thumbnail.src);
                     thumbnail.classList.add('thumbnail'); 
                     div.appendChild(thumbnail);
 
@@ -73,8 +75,8 @@ async function fetchUserFavorites(userId) {
         }
     }
 }
-
-async function fetchFavorites() {
+//全お気に入りを表示
+async function fetchFavorites(userId) {
     
     let storedItem = localStorage.getItem('token');
     let parsedItem = storedItem ? JSON.parse(storedItem) : null;  // ローカルストレージから取得したアイテムをJSONとしてパース
@@ -92,7 +94,8 @@ async function fetchFavorites() {
     }
     
     const data = await response.json();
-
+    console.log("ここまで");
+    console.log("データ",data);
     if (data.success) {
         const container = document.getElementById('favoritesContainer');
 
@@ -104,7 +107,8 @@ async function fetchFavorites() {
 
                     // サムネイルを表示
                     const thumbnail = document.createElement('img');
-                    thumbnail.src = linkPreview.image;  // リンクプレビューから取得した画像URLを設定
+                    thumbnail.src = `http://localhost:3000/favolist/saved_images/imgs/${favorite.image_url}.jpg`;
+                    console.log("サムネイル", thumbnail.src);
                     thumbnail.classList.add('thumbnail'); 
                     div.appendChild(thumbnail);
 
@@ -113,20 +117,33 @@ async function fetchFavorites() {
                     url.href = favorite.url;
                     url.innerText = favorite.url;
                     div.appendChild(url);
-
                     // お気に入り時間を表示
                     const time = document.createElement('p');
                     time.innerText = favorite.time;
                     div.appendChild(time);
-
-                     // お気に入りボタンを表示
-                     const favButton = document.createElement('button');
-                     favButton.classList.add('favorite-button');
-                     favButton.innerHTML = '⭐'; 
-                     favButton.dataset.active = 'false'; 
-                     div.appendChild(favButton);
- 
-
+                    //ここ検討中
+                    if (userId === favorite.user_id) {
+                    }else{
+                    // お気に入りボタンを表示
+                    const favButton = document.createElement('button');
+                    favButton.classList.add('favorite-button');
+                    favButton.innerHTML = '⭐'; 
+                    favButton.dataset.active = 'false'; 
+                    div.appendChild(favButton);
+                    }
+                    // 隠し要素としてpost_idを保持
+                    const hiddenPostId = document.createElement('input');
+                    hiddenPostId.type = 'hidden';
+                    hiddenPostId.value = favorite.perpost_id;  // post_idを設定
+                    hiddenPostId.name = 'hiddenPostId';
+                    div.appendChild(hiddenPostId);
+                    container.appendChild(div);
+                    // 隠し要素としてimage_urlを保持
+                    const hiddenImageUrl = document.createElement('input');
+                    hiddenImageUrl.type = 'hidden';
+                    hiddenImageUrl.value = favorite.image_url;  // image_urlを設定
+                    hiddenImageUrl.name = 'hiddenImageUrl';
+                    div.appendChild(hiddenImageUrl);
                     container.appendChild(div);
 
                     // ボタンのクリックイベントリスナーを追加
@@ -153,13 +170,15 @@ async function fetchFavorites() {
                                 post_id: favorite.postid,
                                 url: favorite.url,
                                 time: favorite.time,
+                                postinpost_id: favorite.perpost_id,
+                                image_url: favorite.image_url
                             };
                     
                             let storedItem = localStorage.getItem('token');
                             let parsedItem = JSON.parse(storedItem);  // ローカルストレージから取得したアイテムをJSONとしてパース
                             let token = parsedItem.token;  // JSONからトークンを取得
 
-                            fetch('/favorites', {
+                            fetch('/favorites?source=sharedScreen', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -173,9 +192,19 @@ async function fetchFavorites() {
                             .catch((error) => console.error('Error:', error));
                         }
                     });
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
                 });
         }
     }
+}
+
+async function getPostIdFromServer(url) {
+    // APIリクエストを行い、post_idを取得
+    const response = await fetch(`/get-post-id?url=${encodeURIComponent(url)}`);
+    const data = await response.json();
+    return data.post_id;
 }
 
 function login(email, password) {
@@ -215,7 +244,10 @@ function login(email, password) {
     // })
     .catch(error => {
         console.error('エラー:', error);
+        const errorMessageDiv = document.getElementById('errorMessage');
+        errorMessageDiv.textContent = 'ログインに失敗しました。';  // または error.message で具体的なエラーメッセージを表示
     });
+    
     
 }
 

@@ -13,7 +13,7 @@ router.get('/', async (req, res) => { // '/link-preview' -> '/'
         const image = $('meta[property="og:image"]').attr('content');
         res.json({ title, description, image });
     } catch (error) {
-        console.error(error);
+        console.error('Error:', error);
         res.status(500).json({ error: 'Failed to generate link preview' });
     }
 });

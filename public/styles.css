@@ -4,6 +4,7 @@ body {
 }
 
 header {
+    margin-bottom: 20px;
     background-color: darkgrey;
     height: 60px;
     display: flex;
@@ -59,7 +60,7 @@ form button:hover {
 }
 
 .thumbnail {
-    width: 200px;
+    width: 300px;
     height: 200px;
     object-fit: cover;
 }
@@ -68,10 +69,12 @@ form button:hover {
     display: block;
     position: absolute;
     left: 15px;
+    top: 10px;  /* これを追加 */
     z-index: 2;
     width: 40px;
     height: 45px;
 }
+
 
 #menuToggle input {
     display: block;
@@ -128,3 +131,51 @@ nav#menu a:last-child {
     align-items: center;
     height: 100vh;
 }
+/* 追加されたスタイル */
+.hidden {
+    display: none;
+}
+
+#customDialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.dialog-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+}
+h2 {
+    margin: 0;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-60%); /* この値は調整可能です */
+    height: 60px; /* headerと同じ高さ */
+    line-height: 60px; /* テキストを垂直方向に中央寄せ */
+    z-index: 1; /* headerより前面に */
+}
+
+#announcement {
+    background-color: #f9f9f9;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+

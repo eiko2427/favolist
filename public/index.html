@@ -32,6 +32,12 @@
     <script src="menu.js"></script>
     <script>
     window.onload = function () {
+        const token = localStorage.getItem('token');
+        // ユーザーがログインしていない場合、ログインページにリダイレクト
+        if (!token) {
+            window.location.href = '/login.html';
+            return;
+        }
         createHamburgerMenu();
     }
     </script>

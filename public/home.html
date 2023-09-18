@@ -12,14 +12,30 @@
         <h1>Favolist</h1>
     </header>
 
+    <!-- お知らせセクションを追加 -->
+    <div class="container">
+        <div id="announcement">
+            <!-- <h2>お知らせ</h2> -->
+            <br>  <br>  
+            <p><strong>Favolistとは</strong><br>
+               みんなのお気に入りを共有するサイトです。会員登録することでお気に入り機能が利用可能になり、動画のブックマークとして利用することができます<br><br>   
+               <strong>通報・削除のリクエスト</strong><br>               
+               不正な動画リンクの通報・削除のリクエストは24時間以内に処理されます。リクエストで削除できるのは動画へのリンクのみです。
+               全ての動画ファイルは各サイトのサーバー上にあり、当サイトはリーチサイトであるためアップロードは一切していません。
+            </p>
+            <br>  <br>   
+        </div>
+    </div>
+    
     <div id="favoritesContainer"></div>
 
     <script src="main.js"></script>
     <script src="menu.js"></script>
     <script>
     window.onload = function () {
+        const userId = localStorage.getItem('user_id');
         createHamburgerMenu();
-        fetchFavorites();
+        fetchFavorites(userId);
     }
     </script>
 </body>

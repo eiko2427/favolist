@@ -1,5 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
+const axios = require('axios');
+const fs = require('fs');
 const mysql = require('mysql');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -8,10 +11,27 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
 const app = express();
+// const imageDir = process.env.IMAGE_DIR_PATH || '/default/path/if/not/set';
+const imageDir = "/Users/shinoharataketo/favolist/saved_images/imgs";
+app.use('/favolist/saved_images/imgs', express.static(imageDir));
+console.log('Image Directory Path:', imageDir);
+app.use(bodyParser.json());
+console.log("あれは",process.env); // 環境変数を全て表示
+
+// const API_KEY = process.env.API_KEY;
+// const CUSTOM_SEARCH_ENGINE = process.env.CUSTOM_SEARCH_ENGINE;
+const API_KEY = "AIzaSyATzIf1_GeiHQ24Nb-S_q2Jg-5_r6iQtRw";
+const CUSTOM_SEARCH_ENGINE = "f2d36ad944b814bf5";
+const saveDirPath = './saved_images'; // 画像保存先ディレクトリ
+// その他のコード...
+
 
 app.use(express.static('public'));
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000',  // 許可するオリジン
+    credentials: true  // 資格情報を許可
+  }));
 
 const connection = mysql.createConnection({
     host: '127.0.0.1',
@@ -20,7 +40,7 @@ const connection = mysql.createConnection({
     database: 'favolist'
 });
 let transporter;
-if (process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'development') {
     transporter = nodemailer.createTransport({
         host: "smtp.mailgun.org",
         port: 587,
@@ -185,45 +205,84 @@ app.post('/favorites', function (req, res) {
     }
 
     const favorite = req.body;
-    const queryFavorite = 'INSERT INTO favorites (user_id, url, time, memo) VALUES (?, ?, ?, ?)';
     
-    const valuesFavorite = [userId, favorite.url, favorite.time, favorite.memo];
 
+    const queryPost = 'INSERT INTO post (user_id, url, time, memo) VALUES (?, ?, ?, ?)';
+    const valuesPost = [userId, favorite.url, favorite.time, favorite.memo];  // 仮定
+    const queryFavorite = 'INSERT INTO favorites (user_id, url, time, memo, postinpost_id, image_url) VALUES (?, ?, ?, ?, ?, ?)';
+    const valuesFavorite = [userId, favorite.url, favorite.time, favorite.memo, favorite.postinpost_id, favorite.image_url];
+    
+    
+    
     // トランザクション開始
     connection.beginTransaction(function(err) {
         if (err) { 
             res.json({ success: false, error: err });
             return;
         }
-        // favoritesテーブルに挿入
-        connection.query(queryFavorite, valuesFavorite, function (error, results, fields) {
-            if (error) {
-                return connection.rollback(function() {
-                    res.json({ success: false, error: error });
-                });
-            }
+        let lastPostId = null; 
 
-            // postテーブルの対応するレコードのfavcountを増やす
-            connection.query('UPDATE post SET favcount = favcount + 1 WHERE url = ?', [favorite.url], function(error, results, fields) {
+
+
+        
+        function proceedWithFavoritesInsertion() {
+            if (lastPostId !== null) {
+                valuesFavorite[4] = lastPostId;  // postinpost_idにlastPostIdを設定
+                console.log(lastPostId);
+            }
+        // favoritesテーブルに挿入
+            connection.query(queryFavorite, valuesFavorite, function (error, results, fields) {
                 if (error) {
                     return connection.rollback(function() {
                         res.json({ success: false, error: error });
                     });
                 }
 
-                // トランザクションをコミット
-                connection.commit(function(err) {
-                    if (err) {
+                    // postテーブルの対応するレコードのfavcountを増やす
+                connection.query('UPDATE post SET favcount = favcount + 1 WHERE url = ?', [favorite.url], function(error, results, fields) {
+                    if (error) {
                         return connection.rollback(function() {
-                            res.json({ success: false, error: err });
+                            res.json({ success: false, error: error });
                         });
                     }
-                    res.json({ success: true });
+
+                        // トランザクションをコミット
+                    connection.commit(function(err) {
+                        if (err) {
+                            return connection.rollback(function() {
+                                res.json({ success: false, error: err });
+                            });
+                        }
+                            res.json({ success: true });
+                    });
                 });
             });
-        });
+        }
+
+        if (req.query.source === 'individualScreen') {
+            // お気に入り登録画面からの処理
+            connection.query(queryPost, valuesPost, function (error, results, fields) {
+                if (error) {
+                    return connection.rollback(function() {
+                        res.json({ success: false, error: error });
+                    });
+                }
+                lastPostId = results.insertId;
+                valuesFavorite[4] = lastPostId;
+                proceedWithFavoritesInsertion();
+            });
+        } else if (req.query.source === 'sharedScreen') {
+            // みんなのお気に入り画面からの処理
+            valuesFavorite[4] = favorite.postinpost_id;  // postinpost_idにクライアントから送られてきた値を設定
+            valuesFavorite[5] = favorite.image_url;
+            proceedWithFavoritesInsertion();
+        } else {
+            proceedWithFavoritesInsertion();
+        }
     });
 });
+
+
 
 app.delete('/favorites', function (req, res) {
     const bearerHeader = req.headers['authorization'];
@@ -244,15 +303,166 @@ app.delete('/favorites', function (req, res) {
     const url = req.query.url;
     const query = 'DELETE FROM favorites WHERE user_id = ? AND url = ?';
     const values = [userId, url];
+    const querypost = 'DELETE FROM post WHERE user_id = ? AND url = ?';
+    const checkPostExists = 'SELECT * FROM post WHERE user_id = ? AND url = ?';
 
     connection.query(query, values, function (error, results, fields) {
-        if (error) {
+        if (error) {      
             res.json({ success: false, error: error });
         } else {
-            res.json({ success: true });
+            // Check if a corresponding record exists in the 'post' table
+            connection.query(checkPostExists, values, function (error, results, fields) {                   
+                if (error) {
+                    res.json({ success: false, error: error });
+                } else {
+                    // If a record exists, then proceed with the DELETE query for 'post'
+                    if (results.length > 0) {
+                        connection.query(querypost, values, function (error, results, fields) {
+                            if (error) {
+                                res.json({ success: false, error: error });
+                            } else {
+                                res.json({ success: true });
+                            }
+                        });
+                    } else {
+                        // If no record exists in 'post', just send success as the 'favorite' was successfully deleted
+                        res.json({ success: true });
+                    }
+                }
+            });
         }
     });
 });
+
+function makeDir(path) {
+        if (!fs.existsSync(path)){
+        fs.mkdirSync(path);
+        }
+    }
+  
+  function makeCorrespondenceTable(correspondenceTable, originalUrl, hashedUrl) {
+    correspondenceTable[originalUrl] = hashedUrl;
+  }
+  
+  async function getImageUrl(apiKey, cseId, searchWord, saveDirPath) {
+    try {
+      const res = await axios.get(`https://www.googleapis.com/customsearch/v1?q=${searchWord}&cx=${cseId}&key=${apiKey}&searchType=image&num=1`);
+      return [res.data.items[0].link];
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  
+  async function getImage(saveDirPath, imgList) {
+    makeDir(saveDirPath);
+    const saveImgPath = `${saveDirPath}/imgs`;
+    makeDir(saveImgPath);
+    let hashedUrl = null;  // hashedUrlの初期値をnullに設定
+
+    try {
+        const url = imgList[0];
+        const extension = url.split('.').pop();
+        hashedUrl = crypto.createHash('sha256').update(url).digest('hex');
+        const path = `${saveImgPath}/${hashedUrl}.${extension}`;
+
+        const img = await axios.get(url, { responseType: 'arraybuffer' });
+        fs.writeFileSync(path, Buffer.from(img.data), 'binary');
+        
+        console.log("ハッシュ", hashedUrl);
+        makeCorrespondenceTable({}, url, hashedUrl);
+    } catch (error) {
+        console.error("failed to download images.", error);
+    }
+
+    return hashedUrl;  // hashedUrlを返す
+}
+
+  
+//   app.post('/get_image', async (req, res) => {
+//     const url = req.body.url;
+//     const imgList = await getImageUrl(API_KEY, CUSTOM_SEARCH_ENGINE, url, saveDirPath);
+//     const hashedUrl = await getImage(saveDirPath, imgList);
+//     console.log("キーの値",API_KEY);
+//     console.log("カスタムサーチエンジンは",CUSTOM_SEARCH_ENGINE);
+    
+//     try {
+//         // SQLクエリを用いてデータベースを更新（仮の例です）
+//         // const updateQuery = "UPDATE post SET image_url = ? WHERE url = ?";
+//         // await db.run(updateQuery, [hashedUrl, url]); // dbはあなたのデータベース接続オブジェクトです
+//     } catch (error) {
+//         console.error("DB update failed:", error);
+//         return res.json({ success: false });
+//     }
+  
+//     res.json({ success: true });
+//   });
+// app.post('/get_image', async function (req, res) {
+//     try {
+//         const url = req.body.url;
+    
+//         const imgList = await getImageUrl(API_KEY, CUSTOM_SEARCH_ENGINE, url, saveDirPath);
+//         const hashedUrl = await getImage(saveDirPath, imgList);
+        
+//         console.log("キーの値", API_KEY);
+//         console.log("カスタムサーチエンジンは", CUSTOM_SEARCH_ENGINE);
+    
+//         // SQLクエリを用いてデータベースを更新
+//         const updateQuery = "UPDATE post SET image_url = ? WHERE url = ?";
+//         await connection.query(updateQuery, [hashedUrl, url]);
+//         app.post('/get_image', async function (req, res) {
+//             try {
+//                 const url = req.body.url;
+            
+//                 const imgList = await getImageUrl(API_KEY, CUSTOM_SEARCH_ENGINE, url, saveDirPath);
+//                 const hashedUrl = await getImage(saveDirPath, imgList);
+            
+//                 // SQLクエリを用いてpostテーブルを更新
+//                 const updatePostQuery = "UPDATE post SET image_url = ? WHERE url = ?";
+//                 await connection.query(updatePostQuery, [hashedUrl, url]);
+                
+//                 // SQLクエリを用いてfavoritesテーブルを更新
+//                 const updateFavoritesQuery = "UPDATE favorites SET image_url = ? WHERE url = ?";
+//                 await connection.query(updateFavoritesQuery, [hashedUrl, url]);
+                
+//                 res.json({ success: true });
+//             } catch (error) {
+//                 console.error("An error occurred:", error);
+//                 res.json({ success: false });
+//             }
+//         });
+        
+//         res.json({ success: true });
+//     } catch (error) {
+//         console.error("An error occurred:", error);
+//         res.json({ success: false });
+//     }
+// });
+
+app.post('/get_image', async function (req, res) {
+    try {
+        const url = req.body.url;
+    
+        const imgList = await getImageUrl(API_KEY, CUSTOM_SEARCH_ENGINE, url, saveDirPath);
+        const hashedUrl = await getImage(saveDirPath, imgList);
+        
+        console.log("キーの値", API_KEY);
+        console.log("カスタムサーチエンジンは", CUSTOM_SEARCH_ENGINE);
+    
+        // SQLクエリを用いてpostテーブルを更新
+        const updatePostQuery = "UPDATE post SET image_url = ? WHERE url = ?";
+        await connection.query(updatePostQuery, [hashedUrl, url]);
+        
+        // SQLクエリを用いてfavoritesテーブルを更新
+        const updateFavoritesQuery = "UPDATE favorites SET image_url = ? WHERE url = ?";
+        await connection.query(updateFavoritesQuery, [hashedUrl, url]);
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error("An error occurred:", error);
+        res.json({ success: false });
+    }
+});
+
 
 
 
