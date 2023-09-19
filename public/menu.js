@@ -38,10 +38,12 @@ if(localStorage.getItem('token')) { // ユーザーがログインしている�
     menuItem3.textContent = '▶︎ ログイン';
 }
 
+    const menuItem5 = document.createElement('a');
+    menuItem5.href = 'contact.html';  
+    menuItem5.textContent = '▶︎ お問合せ';
 
 
-
-    menu.append(menuItem1, menuItem2, menuItem4, menuItem3);
+    menu.append(menuItem1, menuItem2, menuItem4, menuItem3, menuItem5);
 
     menu.style.display = 'none';
     header.appendChild(menu);
