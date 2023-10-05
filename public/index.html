@@ -16,20 +16,27 @@
                     <label for="url">動画のURL:</label>
                     <input type="text" id="url" name="url" class="form-control">
                 </div>
-                <div class="form-group">
+                <!-- <div class="form-group">
                     <label for="time">お気に入りの時間:</label>
                     <input type="time" id="time" name="time" class="form-control">
-                </div>
-                <div class="form-group">
+                </div> -->
+                <!-- <div class="form-group">
                     <label for="memo">メモ (30文字以内):</label>
                     <textarea id="memo" name="memo" maxlength="30" class="form-control"></textarea>
+                </div> -->
+
+                <div class="form-group">
+                    <label for="tags">お気に入りポイント(人気タグ):</label>
+                <input type="text" id="tags" name="tags" class="form-control" autocomplete="off">
+
+                    <div id="tag-suggestions" class="tag-suggestions"></div>
                 </div>
                 <button id="save-button" class="btn btn-dark w-100">登録</button>
-            </div>
         </div>
     </div>
     <script src="main.js"></script>
     <script src="menu.js"></script>
+
     <script>
     window.onload = function () {
         const token = localStorage.getItem('token');

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <link rel="stylesheet" type="text/css" href="/styles.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Favolist</title>
 </head>
@@ -18,19 +19,79 @@
             <!-- <h2>お知らせ</h2> -->
             <br>  <br>  
             <p><strong>Favolistとは</strong><br>
-               みんなのお気に入りを共有するサイトです。会員登録することでお気に入り機能が利用可能になり、動画のブックマークとして利用することができます<br><br>   
+               みんなのお気に入りを共有するリーチサイトです。会員登録することでお気に入り機能が利用可能になり、動画のブックマークとして利用することができます<br>
+               このページには全ユーザーが登録した投稿が表示されていて、星ボタン押下でブックマークすることができます<br><br>   
+               <strong>当サービスの機能について</strong><br>
+               一部URLは対象とは異なる画像が表示される可能性があります。またURLから品番を特定できないものについては画像を表示することはできないためご了承願います。<br><br>    
                <strong>通報・削除のリクエスト</strong><br>               
                不正な動画リンクの通報・削除のリクエストは24時間以内に処理されます。リクエストで削除できるのは動画へのリンクのみです。
-               全ての動画ファイルは各サイトのサーバー上にあり、当サイトはリーチサイトであるためアップロードは一切していません。
+               全ての動画ファイルは各サイトのサーバー上にあり、当サイトはアップロードは一切していません。
             </p>
             <br>  <br>   
         </div>
     </div>
-    
-    <div id="favoritesContainer"></div>
 
+    <div class="container">
+        <h3 class="tab-title text-center custom-tab" id="tabTitle">新着順</h3> <!-- タブの上にタイトルを追加 -->
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link " id="new-posts-tab" data-toggle="tab" href="#newPosts" onclick="changeTabTitle('新着順')">
+                    <i class="fas fa-clock"></i> 新着順
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <!-- <a class="nav-link" id="popular-posts-tab" data-toggle="tab" href="#popularPosts24h" onclick="changeTabTitle('人気順（24時間）')"> -->
+                    <!-- <i class="fas fa-star"></i> 人気順（24時間） -->
+                <a class="nav-link" id="popular-posts-tab" data-toggle="tab" href="#popularPosts24h" onclick="changeTabTitle('Coming Soon')">
+                    <i class="fas fa-star"></i> 人気順（coming soon）
+                </a>
+            </li>
+            <!-- <li class="nav-item">
+                <a class="nav-link" id="popular-posts-tab" data-toggle="tab" href="#popularPostsWeek" onclick="changeTabTitle('人気順（1週間）')">
+                    <i class="fas fa-star"></i> 人気順（1週間）
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="popular-posts-tab" data-toggle="tab" href="#popularPostsMonth" onclick="changeTabTitle('人気順（1ヶ月）')">
+                    <i class="fas fa-star"></i> 人気順（1ヶ月）
+                </a>
+            </li> -->
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="newPosts">              
+                <div id="favoritesContainer"></div>
+            </div>
+            <div class="tab-pane fade" id="popular-posts-tab">              
+            </div>
+            <div class="tab-pane fade" id="popular-posts-tab">              
+            </div>
+            <div class="tab-pane fade" id="popular-posts-tab">              
+            </div>
+        </div>
+    </div>
+    <script>
+        function changeTabTitle(title) {
+            document.getElementById("tabTitle").textContent = title;
+        }
+    </script>
+    
+    
+    
+    
+
+
+    
+    <script>
+        function changeTitle(title) {
+            document.querySelector('.tab-title').textContent = title;
+        }
+    </script>
     <script src="main.js"></script>
     <script src="menu.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script>
     window.onload = function () {
         const userId = localStorage.getItem('user_id');

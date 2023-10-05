@@ -34,31 +34,61 @@ async function fetchUserFavorites(userId) {
                     thumbnail.src = `http://localhost:3000/favolist/saved_images/imgs/${favorite.image_url}.jpg`;
                     console.log("サムネイル", thumbnail.src);
                     thumbnail.classList.add('thumbnail'); 
-                    div.appendChild(thumbnail);
+
+                    const panelThumbnail = document.createElement('img');
+                    panelThumbnail.src = `http://localhost:3000/favolist/saved_images/imgs/${favorite.panel_url}.jpg`;
+                    panelThumbnail.classList.add('panel-thumbnail');
+
+                    // 画像をクリックしたときに拡大・縮小する機能
+                    panelThumbnail.addEventListener('click', function() {
+                        if (panelThumbnail.classList.contains('panel-thumbnail-expanded')) {
+                            panelThumbnail.classList.remove('panel-thumbnail-expanded');
+                        } else {
+                            panelThumbnail.classList.add('panel-thumbnail-expanded');
+                        }
+                    });
+
+                    // divにCSSクラスを追加して水平に並べるスタイルを適用
+                    div.classList.add('horizontal-container');
+
+                    // サムネイルとpanel_urlを追加するための新しいdivを作成
+                    const imgDiv = document.createElement('div');
+                    imgDiv.classList.add('img-container');
+                    imgDiv.appendChild(thumbnail);
+                    imgDiv.appendChild(panelThumbnail);
+                    div.appendChild(imgDiv);
+
+                    // URL、お気に入り時間、タグ、お気に入りボタンを追加するための新しいdivを作成
+                    const infoDiv = document.createElement('div');
+                    infoDiv.classList.add('info-container');
+
 
                     // URLを表示
                     const url = document.createElement('a');
                     url.href = favorite.url;
                     url.innerText = favorite.url;
-                    div.appendChild(url);
-
+                    infoDiv.appendChild(url);
                     // お気に入り時間を表示
                     const time = document.createElement('p');
                     time.innerText = favorite.time;
-                    div.appendChild(time);
-                    container.appendChild(div);
+                    // div.appendChild(time);
+                    // タグを表示
+                    const tags = document.createElement('p');
+                    tags.innerText = favorite.tags;
+                    infoDiv.appendChild(tags);
 
                     // 削除ボタンを追加
                     const deleteButton = document.createElement('button');
                     deleteButton.innerHTML = '削除';
-                    deleteButton.classList.add('btn', 'btn-danger');  // Bootstrapのクラスを追加
+                    deleteButton.classList.add('btn', 'btn-danger', 'small-delete-button');
                     deleteButton.addEventListener('click', async () => {
-                        const response = await fetch(`/favorites?userId=${userId}&url=${encodeURIComponent(favorite.url)}`, {
+                        const response = await fetch(`/favorites?userId=${userId}&post_id=${encodeURIComponent(favorite.post_id)}&url=${encodeURIComponent(favorite.url)}`, {
                             method: 'DELETE',
                             headers: {
-                                'Authorization': `Bearer ${token}`  // "Bearer "プレフィクスを追加してヘッダーに認証トークンを設定
+                                'Authorization': `Bearer ${token}`
                             },
                         });
+                        
 
                         if (!response.ok) {
                             const message = await response.text();  // レスポンス本文を取得
@@ -67,8 +97,8 @@ async function fetchUserFavorites(userId) {
                             div.remove();  // 成功した場合、該当のお気に入りを画面から削除
                         }
                     });
-
-                    div.appendChild(deleteButton);
+                    div.appendChild(infoDiv);
+                    div.prepend(deleteButton);
                     container.appendChild(div);
 
                 });
@@ -94,7 +124,6 @@ async function fetchFavorites(userId) {
     }
     
     const data = await response.json();
-    console.log("ここまで");
     console.log("データ",data);
     if (data.success) {
         const container = document.getElementById('favoritesContainer');
@@ -110,27 +139,58 @@ async function fetchFavorites(userId) {
                     thumbnail.src = `http://localhost:3000/favolist/saved_images/imgs/${favorite.image_url}.jpg`;
                     console.log("サムネイル", thumbnail.src);
                     thumbnail.classList.add('thumbnail'); 
-                    div.appendChild(thumbnail);
+
+                    const panelThumbnail = document.createElement('img');
+                    panelThumbnail.src = `http://localhost:3000/favolist/saved_images/imgs/${favorite.panel_url}.jpg`;
+                    panelThumbnail.classList.add('panel-thumbnail');
+
+                    // 画像をクリックしたときに拡大・縮小する機能
+                    panelThumbnail.addEventListener('click', function() {
+                        if (panelThumbnail.classList.contains('panel-thumbnail-expanded')) {
+                            panelThumbnail.classList.remove('panel-thumbnail-expanded');
+                        } else {
+                            panelThumbnail.classList.add('panel-thumbnail-expanded');
+                        }
+                    });
+
+                    // divにCSSクラスを追加して水平に並べるスタイルを適用
+                    div.classList.add('horizontal-container');
+
+                    // サムネイルとpanel_urlを追加するための新しいdivを作成
+                    const imgDiv = document.createElement('div');
+                    imgDiv.classList.add('img-container');
+                    imgDiv.appendChild(thumbnail);
+                    imgDiv.appendChild(panelThumbnail);
+                    div.appendChild(imgDiv);
+
+                    // URL、お気に入り時間、タグ、お気に入りボタンを追加するための新しいdivを作成
+                    const infoDiv = document.createElement('div');
+                    infoDiv.classList.add('info-container');
+
 
                     // URLを表示
                     const url = document.createElement('a');
                     url.href = favorite.url;
                     url.innerText = favorite.url;
-                    div.appendChild(url);
+                    infoDiv.appendChild(url);
                     // お気に入り時間を表示
                     const time = document.createElement('p');
                     time.innerText = favorite.time;
-                    div.appendChild(time);
+                    // div.appendChild(time);
+                    // タグを表示
+                    const tags = document.createElement('p');
+                    tags.innerText = favorite.tags;
+                    infoDiv.appendChild(tags);
                     //ここ検討中
-                    if (userId === favorite.user_id) {
-                    }else{
+                    // if (userId === favorite.user_id) {
+                    // }else{
                     // お気に入りボタンを表示
                     const favButton = document.createElement('button');
                     favButton.classList.add('favorite-button');
                     favButton.innerHTML = '⭐'; 
                     favButton.dataset.active = 'false'; 
-                    div.appendChild(favButton);
-                    }
+                    infoDiv.appendChild(favButton);
+                    // }
                     // 隠し要素としてpost_idを保持
                     const hiddenPostId = document.createElement('input');
                     hiddenPostId.type = 'hidden';
@@ -144,24 +204,18 @@ async function fetchFavorites(userId) {
                     hiddenImageUrl.value = favorite.image_url;  // image_urlを設定
                     hiddenImageUrl.name = 'hiddenImageUrl';
                     div.appendChild(hiddenImageUrl);
+                    div.appendChild(infoDiv);
                     container.appendChild(div);
 
                     // ボタンのクリックイベントリスナーを追加
                     favButton.addEventListener('click', function() {
                         // ボタンのアクティブ状態を取得
                         const isActive = favButton.dataset.active === 'true';
-
-                        if (isActive) {
-                            // ボタンが既にアクティブ（お気に入り済み）ならば、非アクティブ（未お気に入り）に変更
-                            favButton.style.color = 'gray';
-                            favButton.dataset.active = 'false';
-
-                            // お気に入り情報をDBから削除する処理を書く
-                            // ...
-                        } else {
-                            // ボタンが非アクティブ（未お気に入り）ならば、アクティブ（お気に入り済み）に変更
-                            favButton.style.color = 'yellow';
-                            favButton.dataset.active = 'true';
+                        const action = isActive ? 'remove' : 'add'; // お気に入り状態によってアクションを変える
+                        const endpoint = `/favorites?source=sharedScreen&action=${action}`; // APIエンドポイントにactionパラメータを追加
+                        
+                        favButton.style.color = isActive ? 'gray' : 'yellow';
+                        favButton.dataset.active = isActive ? 'false' : 'true';
 
                             // お気に入り情報をDBに保存する処理を書く
                             const userId = localStorage.getItem('user_id'); 
@@ -171,12 +225,22 @@ async function fetchFavorites(userId) {
                                 url: favorite.url,
                                 time: favorite.time,
                                 postinpost_id: favorite.perpost_id,
-                                image_url: favorite.image_url
+                                image_url: favorite.image_url,
+                                panel_url: favorite.panel_url
                             };
-                    
+                            favData.action = action;
                             let storedItem = localStorage.getItem('token');
                             let parsedItem = JSON.parse(storedItem);  // ローカルストレージから取得したアイテムをJSONとしてパース
                             let token = parsedItem.token;  // JSONからトークンを取得
+                            
+                            // fetch(endpoint, {
+                            //     method: 'POST',
+                            //     headers: {
+                            //         'Content-Type': 'application/json',
+                            //         'Authorization': `Bearer ${token}`  // "Bearer "プレフィクスを追加してヘッダーに認証トークンを設定
+                            //     },
+                            //     body: JSON.stringify(favData),
+                            // })
 
                             fetch('/favorites?source=sharedScreen', {
                                 method: 'POST',
@@ -190,7 +254,7 @@ async function fetchFavorites(userId) {
                             .then(response => response.json())
                             .then(data => console.log(data))
                             .catch((error) => console.error('Error:', error));
-                        }
+                        
                     });
                 })
                 .catch(error => {
@@ -235,13 +299,6 @@ function login(email, password) {
         localStorage.setItem('user_id', decodedToken.user_id);
         window.location.href = '/home.html';
     })
-    // .then(userId => {
-    //     if (!userId) {
-    //         throw new Error('User ID is undefined or empty');
-    //     }
-    //     localStorage.setItem('user_id', userId.trim()); // Store user_id directly
-    //     window.location.href = '/home.html';
-    // })
     .catch(error => {
         console.error('エラー:', error);
         const errorMessageDiv = document.getElementById('errorMessage');
@@ -261,15 +318,6 @@ function logout() {
     window.location.href = 'login.html';
 }
 
-// // ログインしているユーザーのIDを取得（仮にlocalStorageから取得するとする）
-// const userId = localStorage.getItem('userId');
-
-// // ログインしているユーザーのお気に入りだけを取得
-// fetchUserFavorites(userId);
-
-// 全てのお気に入りを取得
-// fetchAllFavorites();
-// main.js
 window.onload = function () {
     fetch('/allfavorites')
     .then(res => {
@@ -303,4 +351,14 @@ window.onload = function () {
     }
     
     createHamburgerMenu();
+
+    document.getElementById('sortTitle').innerText = "新着順";
+
+
+    document.getElementById('new-posts-tab').addEventListener('click', function() {
+        document.getElementById('sortTitle').innerText = "新着順";
+    });
+    document.getElementById('popular-posts-tab').addEventListener('click', function() {
+        document.getElementById('sortTitle').innerText = "人気順";
+    });
 };

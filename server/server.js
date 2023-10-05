@@ -205,12 +205,14 @@ app.post('/favorites', function (req, res) {
     }
 
     const favorite = req.body;
-    
+    console.log(favorite);
 
-    const queryPost = 'INSERT INTO post (user_id, url, time, memo) VALUES (?, ?, ?, ?)';
-    const valuesPost = [userId, favorite.url, favorite.time, favorite.memo];  // 仮定
-    const queryFavorite = 'INSERT INTO favorites (user_id, url, time, memo, postinpost_id, image_url) VALUES (?, ?, ?, ?, ?, ?)';
-    const valuesFavorite = [userId, favorite.url, favorite.time, favorite.memo, favorite.postinpost_id, favorite.image_url];
+    const queryPost = 'INSERT INTO post (user_id, url, time, memo, tags) VALUES (?, ?, ?, ?, ?)';
+    const valuesPost = [userId, favorite.url, favorite.time, favorite.memo, favorite.tags];  // 'favorite.tags' は仮定
+    const queryFavorite = 'INSERT INTO favorites (user_id, url, time, memo, postinpost_id, image_url, tags, panel_url) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)';
+    const valuesFavorite = [userId, favorite.url, favorite.time, favorite.memo, favorite.postinpost_id, favorite.image_url, favorite.tags];  // 'favorite.tags' は仮定
+    const action = req.body.action; // ここを変更
+    // const action = req.query.action;
     
     
     
@@ -221,65 +223,85 @@ app.post('/favorites', function (req, res) {
             return;
         }
         let lastPostId = null; 
-
-
-
-        
-        function proceedWithFavoritesInsertion() {
-            if (lastPostId !== null) {
-                valuesFavorite[4] = lastPostId;  // postinpost_idにlastPostIdを設定
-                console.log(lastPostId);
-            }
-        // favoritesテーブルに挿入
-            connection.query(queryFavorite, valuesFavorite, function (error, results, fields) {
-                if (error) {
-                    return connection.rollback(function() {
-                        res.json({ success: false, error: error });
-                    });
+        console.log("アクションは"+action);
+        if (action === 'add'　|| action === 'register') {
+            // お気に入り追加の処理（既存のコードを使用）
+            function proceedWithFavoritesInsertion() {
+                if (lastPostId !== null) {
+                    valuesFavorite[4] = lastPostId;  // postinpost_idにlastPostIdを設定
+                    console.log(lastPostId);
                 }
-
-                    // postテーブルの対応するレコードのfavcountを増やす
-                connection.query('UPDATE post SET favcount = favcount + 1 WHERE url = ?', [favorite.url], function(error, results, fields) {
+            // sharedScreenからの遷移の時のみpanel_urlを設定
+                if (req.query.source === 'sharedScreen') {
+                    valuesFavorite[7] = favorite.panel_url; 
+                }    
+            // favoritesテーブルに挿入
+                connection.query(queryFavorite, valuesFavorite, function (error, results, fields) {
+                    if (error) {
+                        console.log("Post Insert Error: ", error);
+                        return connection.rollback(function() {
+                            res.json({ success: false, error: error });
+                        });
+                    }
+                    console.log(favorite.postinpost_id);
+                        // postテーブルの対応するレコードのfavcountを増やす
+                    connection.query('UPDATE post SET favcount = favcount + 1 WHERE perpost_id = ?', [favorite.postinpost_id], function(error, results, fields) {
+                        if (error) {
+                            return connection.rollback(function() {
+                                res.json({ success: false, error: error });
+                            });
+                        }
+                    });
+                });
+            }
+    
+            if (req.query.source === 'individualScreen') {
+                // お気に入り登録画面からの処理　user_idを紐つける
+                connection.query(queryPost, valuesPost, function (error, results, fields) {
                     if (error) {
                         return connection.rollback(function() {
                             res.json({ success: false, error: error });
                         });
                     }
-
-                        // トランザクションをコミット
-                    connection.commit(function(err) {
-                        if (err) {
-                            return connection.rollback(function() {
-                                res.json({ success: false, error: err });
-                            });
-                        }
-                            res.json({ success: true });
-                    });
+                    lastPostId = results.insertId;
+                    valuesFavorite[4] = lastPostId;
+                    proceedWithFavoritesInsertion();
                 });
-            });
-        }
-
-        if (req.query.source === 'individualScreen') {
-            // お気に入り登録画面からの処理
-            connection.query(queryPost, valuesPost, function (error, results, fields) {
+            } else if (req.query.source === 'sharedScreen') {
+                // みんなのお気に入り画面からの処理　お気に入りした時post_idと投稿画像を紐つける
+                valuesFavorite[4] = favorite.postinpost_id;  // postinpost_idにクライアントから送られてきた値を設定
+                valuesFavorite[5] = favorite.image_url;
+                proceedWithFavoritesInsertion();
+            } else {
+                proceedWithFavoritesInsertion();
+            }
+    
+        } else if (action === 'remove') {
+            // お気に入り解除の処理
+            connection.query('DELETE FROM favorites WHERE user_id = ? AND postinpost_id = ?', [userId, favorite.postinpost_id], function(error, results, fields) {
                 if (error) {
                     return connection.rollback(function() {
                         res.json({ success: false, error: error });
                     });
                 }
-                lastPostId = results.insertId;
-                valuesFavorite[4] = lastPostId;
-                proceedWithFavoritesInsertion();
+    
+                // favcountを減らす
+                connection.query('UPDATE post SET favcount = favcount - 1 WHERE perpost_id = ?', [favorite.postinpost_id], function(error, results, fields) {
+                    // ...
+                });
             });
-        } else if (req.query.source === 'sharedScreen') {
-            // みんなのお気に入り画面からの処理
-            valuesFavorite[4] = favorite.postinpost_id;  // postinpost_idにクライアントから送られてきた値を設定
-            valuesFavorite[5] = favorite.image_url;
-            proceedWithFavoritesInsertion();
-        } else {
-            proceedWithFavoritesInsertion();
         }
-    });
+    
+        // トランザクションをコミット
+        connection.commit(function(err) {
+            if (err) {
+                return connection.rollback(function() {
+                    res.json({ success: false, error: err });
+                });
+            }
+            res.json({ success: true });
+        });
+    });    
 });
 
 
@@ -300,24 +322,28 @@ app.delete('/favorites', function (req, res) {
         return res.status(400).send('Invalid token.');
     }
 
+    const postinpost_id = req.query.post_id;
     const url = req.query.url;
-    const query = 'DELETE FROM favorites WHERE user_id = ? AND url = ?';
-    const values = [userId, url];
-    const querypost = 'DELETE FROM post WHERE user_id = ? AND url = ?';
-    const checkPostExists = 'SELECT * FROM post WHERE user_id = ? AND url = ?';
+
+    const query = 'DELETE FROM favorites WHERE user_id = ? AND post_id = ? AND url = ?';
+    const values = [userId, post_id, url];
+    const querypost = 'DELETE FROM post WHERE user_id = ? AND perpost_id = ? AND url = ?';
+    const postvalues = [userId, postinpost_id, url];
+    const checkPostExists = 'SELECT * FROM post WHERE perpost_id = ? AND user_id = ?';
 
     connection.query(query, values, function (error, results, fields) {
         if (error) {      
             res.json({ success: false, error: error });
         } else {
             // Check if a corresponding record exists in the 'post' table
-            connection.query(checkPostExists, values, function (error, results, fields) {                   
+            connection.query(checkPostExists, [postinpost_id, userId], function (error, results, fields) {                   
                 if (error) {
                     res.json({ success: false, error: error });
                 } else {
+                    console.log("件数は"+results.length);
                     // If a record exists, then proceed with the DELETE query for 'post'
                     if (results.length > 0) {
-                        connection.query(querypost, values, function (error, results, fields) {
+                        connection.query(querypost, postvalues, function (error, results, fields) {
                             if (error) {
                                 res.json({ success: false, error: error });
                             } else {
@@ -335,18 +361,22 @@ app.delete('/favorites', function (req, res) {
 });
 
 function makeDir(path) {
-        if (!fs.existsSync(path)){
-        fs.mkdirSync(path);
-        }
-    }
-  
+            if (!fs.existsSync(path)){
+            fs.mkdirSync(path);
+            }
+}
+    
   function makeCorrespondenceTable(correspondenceTable, originalUrl, hashedUrl) {
     correspondenceTable[originalUrl] = hashedUrl;
   }
   
   async function getImageUrl(apiKey, cseId, searchWord, saveDirPath) {
     try {
-      const res = await axios.get(`https://www.googleapis.com/customsearch/v1?q=${searchWord}&cx=${cseId}&key=${apiKey}&searchType=image&num=1`);
+      const searchQuery = searchWord + " av";
+      const res = await axios.get(`https://www.googleapis.com/customsearch/v1?q=${searchQuery}&cx=${cseId}&key=${apiKey}&searchType=image&num=1`);
+    //   console.log("検索値は"+searchWord);
+    console.log("これは"+JSON.stringify(res.data, null, 2));
+    console.log("検索値は"+res[res.data.items[0].link]);
       return [res.data.items[0].link];
     } catch (error) {
       console.error(error);
@@ -361,8 +391,15 @@ function makeDir(path) {
 
     try {
         const url = imgList[0];
-        const extension = url.split('.').pop();
+         // 正規表現でURLから拡張子を取得
+         const matches = url.match(/\.(jpg|png|gif|bmp|jpeg)(\?.+)?$/i);
+         if (!matches) {
+             console.error("Unknown file extension");
+             return null;
+         }
+         const extension = matches[1];
         hashedUrl = crypto.createHash('sha256').update(url).digest('hex');
+        // 不要な文字が拡張子に含まれないように保存
         const path = `${saveImgPath}/${hashedUrl}.${extension}`;
 
         const img = await axios.get(url, { responseType: 'arraybuffer' });
@@ -377,75 +414,15 @@ function makeDir(path) {
     return hashedUrl;  // hashedUrlを返す
 }
 
-  
-//   app.post('/get_image', async (req, res) => {
-//     const url = req.body.url;
-//     const imgList = await getImageUrl(API_KEY, CUSTOM_SEARCH_ENGINE, url, saveDirPath);
-//     const hashedUrl = await getImage(saveDirPath, imgList);
-//     console.log("キーの値",API_KEY);
-//     console.log("カスタムサーチエンジンは",CUSTOM_SEARCH_ENGINE);
-    
-//     try {
-//         // SQLクエリを用いてデータベースを更新（仮の例です）
-//         // const updateQuery = "UPDATE post SET image_url = ? WHERE url = ?";
-//         // await db.run(updateQuery, [hashedUrl, url]); // dbはあなたのデータベース接続オブジェクトです
-//     } catch (error) {
-//         console.error("DB update failed:", error);
-//         return res.json({ success: false });
-//     }
-  
-//     res.json({ success: true });
-//   });
-// app.post('/get_image', async function (req, res) {
-//     try {
-//         const url = req.body.url;
-    
-//         const imgList = await getImageUrl(API_KEY, CUSTOM_SEARCH_ENGINE, url, saveDirPath);
-//         const hashedUrl = await getImage(saveDirPath, imgList);
-        
-//         console.log("キーの値", API_KEY);
-//         console.log("カスタムサーチエンジンは", CUSTOM_SEARCH_ENGINE);
-    
-//         // SQLクエリを用いてデータベースを更新
-//         const updateQuery = "UPDATE post SET image_url = ? WHERE url = ?";
-//         await connection.query(updateQuery, [hashedUrl, url]);
-//         app.post('/get_image', async function (req, res) {
-//             try {
-//                 const url = req.body.url;
-            
-//                 const imgList = await getImageUrl(API_KEY, CUSTOM_SEARCH_ENGINE, url, saveDirPath);
-//                 const hashedUrl = await getImage(saveDirPath, imgList);
-            
-//                 // SQLクエリを用いてpostテーブルを更新
-//                 const updatePostQuery = "UPDATE post SET image_url = ? WHERE url = ?";
-//                 await connection.query(updatePostQuery, [hashedUrl, url]);
-                
-//                 // SQLクエリを用いてfavoritesテーブルを更新
-//                 const updateFavoritesQuery = "UPDATE favorites SET image_url = ? WHERE url = ?";
-//                 await connection.query(updateFavoritesQuery, [hashedUrl, url]);
-                
-//                 res.json({ success: true });
-//             } catch (error) {
-//                 console.error("An error occurred:", error);
-//                 res.json({ success: false });
-//             }
-//         });
-        
-//         res.json({ success: true });
-//     } catch (error) {
-//         console.error("An error occurred:", error);
-//         res.json({ success: false });
-//     }
-// });
-
 app.post('/get_image', async function (req, res) {
     try {
         const url = req.body.url;
-    
-        const imgList = await getImageUrl(API_KEY, CUSTOM_SEARCH_ENGINE, url, saveDirPath);
+        const searchword = req.body.partNumber;
+        console.log("検索品番は"+searchword);
+        const imgList = await getImageUrl(API_KEY, CUSTOM_SEARCH_ENGINE, searchword, saveDirPath);
         const hashedUrl = await getImage(saveDirPath, imgList);
         
-        console.log("キーの値", API_KEY);
+        console.log("キーの値", url);
         console.log("カスタムサーチエンジンは", CUSTOM_SEARCH_ENGINE);
     
         // SQLクエリを用いてpostテーブルを更新
@@ -461,6 +438,43 @@ app.post('/get_image', async function (req, res) {
         console.error("An error occurred:", error);
         res.json({ success: false });
     }
+});
+app.post('/get_imagepanel', async function (req, res) {
+    try {
+        const partNumber = req.body.partNumber;
+        const searchQuery = partNumber + " maxjav image";
+        // const searchQuery = partNumber;
+        const url = req.body.url;
+        const imgList = await getImageUrl(API_KEY, CUSTOM_SEARCH_ENGINE, searchQuery, saveDirPath);
+        const hashedUrl = await getImage(saveDirPath, imgList);
+        
+        console.log("panelの値", searchQuery);
+    
+        // SQLクエリを用いてpostテーブルを更新
+        const updatePostQuery = "UPDATE post SET panel_url = ? WHERE url = ?";
+        await connection.query(updatePostQuery, [hashedUrl, url]);
+        
+        // SQLクエリを用いてfavoritesテーブルを更新
+        const updateFavoritesQuery = "UPDATE favorites SET panel_url = ? WHERE url = ?";
+        await connection.query(updateFavoritesQuery, [hashedUrl, url]);
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error("An error occurred:", error);
+        res.json({ success: false });
+    }
+});
+app.get('/get_tags', function (req, res) {
+    const query = 'SELECT tag_name FROM tag';
+
+    connection.query(query, function (error, results, fields) {
+        if (error) {
+            res.json({ success: false, error: error });
+        } else {
+            const tags = results.map(result => result.tag_name);
+            res.json({ success: true, tags: tags });
+        }
+    });
 });
 
 

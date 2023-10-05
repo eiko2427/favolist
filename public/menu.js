@@ -25,7 +25,7 @@ function createHamburgerMenu() {
 
     const menuItem4 = document.createElement('a');
     menuItem4.href = 'favorites.html';  // お気に入りページへのリンクを設定
-    menuItem4.textContent = '▶︎ Myお気に入り';
+    menuItem4.textContent = '▶︎ 私のお気に入り';
 
 if(localStorage.getItem('token')) { // ユーザーがログインしている場合
     menuItem3 = document.createElement('a');
